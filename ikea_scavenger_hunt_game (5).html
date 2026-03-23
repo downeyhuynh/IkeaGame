@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IKEA Scavenger Hunt</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(135deg, #f5f7fb, #e8eefc);
+      color: #1f2937;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 900px;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 18px 50px rgba(0,0,0,0.12);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #0058a3, #ffda1a);
+      padding: 28px 24px;
+      color: white;
+    }
+
+    .header h1 {
+      margin: 0 0 10px;
+      font-size: 2rem;
+      letter-spacing: 0.5px;
+    }
+
+    .header p {
+      margin: 0;
+      max-width: 700px;
+      line-height: 1.5;
+      color: rgba(255,255,255,0.95);
+    }
+
+    .content {
+      padding: 24px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    .stat-card {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .stat-card h2 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: #0058a3;
+    }
+
+    .stat-card p {
+      margin: 8px 0 0;
+      font-size: 0.95rem;
+      color: #4b5563;
+    }
+
+    .riddle-box {
+      background: #ffffff;
+      border: 2px solid #dbeafe;
+      border-radius: 18px;
+      padding: 24px;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .badge {
+      display: inline-block;
+      width: fit-content;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-bottom: 16px;
+    }
+
+    .riddle-text {
+      font-size: 1.5rem;
+      line-height: 1.45;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .subtext {
+      margin-top: 14px;
+      color: #6b7280;
+      font-size: 0.98rem;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .complete-btn { background: #10b981; color: white; }
+    .skip-btn { background: #f59e0b; color: white; }
+    .reset-btn { background: #ef4444; color: white; }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div id="startScreen" style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg,#0058a3,#ffda1a);display:flex;flex-direction:column;justify-content:center;align-items:center;color:white;z-index:999;">
+    <h1 style="font-size:2.5rem;margin-bottom:20px;">IKEA Scavenger Hunt</h1>
+    <button id="startGameBtn" style="padding:16px 28px;font-size:1.2rem;border:none;border-radius:12px;cursor:pointer;font-weight:bold;">Start Game</button>
+  </div>
+  <div class="app">
+    <div class="header">
+      <h1>IKEA Scavenger Hunt</h1>
+      <p>Complete challenges or skip — but you only get 3 skips!</p>
+    </div>
+
+    <div class="content">
+      <div class="stats">
+        <div class="stat-card"><h2 id="completedCount">0</h2><p>Completed</p></div>
+        <div class="stat-card"><h2 id="skippedCount">0</h2><p>Used Skips</p></div>
+        <div class="stat-card"><h2 id="remainingSkips">3</h2><p>Skips Left</p></div>
+        <div class="stat-card"><h2 id="caughtCount">0</h2><p>Caught</p></div>
+        <div class="stat-card"><h2 id="remainingCount">50</h2><p>Remaining</p></div>
+        <div class="stat-card"><h2 id="seenCount">0</h2><p>Seen</p></div>
+      </div>
+
+      <div class="riddle-box">
+        <div class="badge" id="challengeNumber">Challenge Ready</div>
+        <p class="riddle-text" id="riddleText">Press start to begin.</p>
+        <div class="subtext" id="statusText">Take a photo to prove it.</div>
+      </div>
+
+      <div class="buttons">
+        <button class="complete-btn" id="startOrCompleteBtn">Start / Complete</button>
+        <button class="skip-btn" id="skipBtn">Skip</button>
+        <button class="reset-btn" id="caughtBtn">Caught</button>
+        <button class="reset-btn" id="resetBtn">Reset</button>
+      </div>
+
+      <ol id="completedList"></ol>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'ikeaScavengerHuntState_v1';
+    const ACCESS_KEY = 'ikeaScavengerHuntAccess_v1';
+
+    const riddles = [
+      "Take a photo of a place where it would be good to have dinner.",
+      "Take a photo with someone who looks like they watch anime.",
+      "Find the coziest couch in the store and take a photo with it.",
+      "Take a photo pretending you live in one of the display rooms.",
+      "Find a lamp that looks like it belongs in a movie and take a photo.",
+      "Take a photo with the fanciest chair you can find.",
+      "Find a kitchen display that looks like someone actually cooks there and take a photo.",
+      "Take a photo of the bed you would most want to nap in.",
+      "Find an item you would never buy and take a dramatic photo with it.",
+      "Take a photo with something that matches your outfit.",
+      "Find the smallest item you can spot and take a photo with it.",
+      "Take a photo of a room setup that looks like a rich college student lives there.",
+      "Find a mirror and take the best group selfie you can.",
+      "Take a photo pretending to host a cooking show in a display kitchen.",
+      "Find the weirdest pillow and take a photo with it.",
+      "Take a photo with something blue and yellow like the IKEA colors.",
+      "Find a fake plant that almost looks real and take a photo.",
+      "Take a photo with an item that reminds you of your grandma's house.",
+      "Find a desk setup that looks perfect for gaming and take a photo.",
+      "Take a photo acting like you just bought your first apartment.",
+      "Find a stuffed animal or plush item and take a photo with it.",
+      "Take a photo of the most relaxing reading corner you can find.",
+      "Find a plate or bowl you would use for ramen and take a photo.",
+      "Take a photo with the brightest lamp you can find.",
+      "Find a display room that looks like a teacher lives there and take a photo.",
+      "Take a photo with something that looks futuristic.",
+      "Find a room that would be perfect for an after-school nap and take a photo.",
+      "Take a photo with an item that looks overpriced even if it isn't.",
+      "Find the best dinner table for a first date and take a photo.",
+      "Take a photo pretending to pitch an HGTV show in a display room.",
+      "Find something you think a volleyball player would want in their room and take a photo.",
+      "Take a photo with the most uncomfortable-looking chair you can find.",
+      "Find a display room you think your parents would love and take a photo.",
+      "Take a photo with something that looks like it belongs in a dorm room.",
+      "Find the most modern-looking kitchen and take a photo in it.",
+      "Take a photo with a rug you would want in your future house.",
+      "Find something that looks like it belongs in a beach house and take a photo.",
+      "Take a photo of the best place to sit and gossip.",
+      "Find a lamp or decoration that looks magical and take a photo.",
+      "Take a photo pretending you are a furniture model in a catalog.",
+      "Find a room setup that feels the most peaceful and take a photo.",
+      "Take a photo with the best item for movie night.",
+      "Find a shelf or organizer that would fix your life and take a photo.",
+      "Take a photo of a space where you could imagine doing homework.",
+      "Find the best chair for reading the Bible and take a photo.",
+      "Take a photo with a kitchen item you don't know how to use.",
+      "Find a room setup that looks like a newly married couple would live there and take a photo.",
+      "Take a photo with something that feels very Scandinavian.",
+      "Find a room setup that would be perfect for hosting friends and take a photo.",
+      "Take a photo acting like you are shopping for your dream home."
+    ];
+
+    let availableRiddles = [...riddles];
+    let currentRiddle = null;
+    let completedCount = 0;
+    let skippedCount = 0;
+    let caughtCount = 0;
+    let maxSkips = 3;
+    let seenCount = 0;
+    let timeoutEnd = null;
+    let timeoutInterval = null;
+    let completedItems = [];
+
+    const skipBtn = document.getElementById('skipBtn');
+    const startOrCompleteBtn = document.getElementById('startOrCompleteBtn');
+    const statusText = document.getElementById('statusText');
+    const challengeNumber = document.getElementById('challengeNumber');
+    const riddleText = document.getElementById('riddleText');
+    const completedList = document.getElementById('completedList');
+    const startScreen = document.getElementById('startScreen');
+    const startGameBtn = document.getElementById('startGameBtn');
+
+    function saveAccessGranted() {
+      localStorage.setItem(ACCESS_KEY, 'true');
+    }
+
+    function hasSavedAccess() {
+      return localStorage.getItem(ACCESS_KEY) === 'true';
+    }
+
+    function clearSavedAccess() {
+      localStorage.removeItem(ACCESS_KEY);
+    }
+
+    function saveState() {
+      const state = {
+        availableRiddles,
+        currentRiddle,
+        completedCount,
+        skippedCount,
+        caughtCount,
+        maxSkips,
+        seenCount,
+        timeoutEnd,
+        completedItems
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadState() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+
+      try {
+        const state = JSON.parse(raw);
+        availableRiddles = Array.isArray(state.availableRiddles) ? state.availableRiddles : [...riddles];
+        currentRiddle = typeof state.currentRiddle === 'string' ? state.currentRiddle : null;
+        completedCount = Number.isInteger(state.completedCount) ? state.completedCount : 0;
+        skippedCount = Number.isInteger(state.skippedCount) ? state.skippedCount : 0;
+        caughtCount = Number.isInteger(state.caughtCount) ? state.caughtCount : 0;
+        maxSkips = Number.isInteger(state.maxSkips) ? state.maxSkips : 3;
+        seenCount = Number.isInteger(state.seenCount) ? state.seenCount : 0;
+        timeoutEnd = typeof state.timeoutEnd === 'number' ? state.timeoutEnd : null;
+        completedItems = Array.isArray(state.completedItems) ? state.completedItems : [];
+        return true;
+      } catch (error) {
+        console.error('Could not load saved game state.', error);
+        return false;
+      }
+    }
+
+    function renderCompletedList() {
+      completedList.innerHTML = '';
+      completedItems.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item;
+        completedList.appendChild(li);
+      });
+    }
+
+    function updateStats() {
+      document.getElementById('completedCount').textContent = completedCount;
+      document.getElementById('skippedCount').textContent = skippedCount;
+      document.getElementById('remainingSkips').textContent = Math.max(0, maxSkips - skippedCount);
+      document.getElementById('caughtCount').textContent = caughtCount;
+      document.getElementById('remainingCount').textContent = availableRiddles.length;
+      document.getElementById('seenCount').textContent = seenCount;
+    }
+
+    function isTimedOut() {
+      return timeoutEnd && Date.now() < timeoutEnd;
+    }
+
+    function setGameDisabled(disabled) {
+      startOrCompleteBtn.disabled = disabled;
+      skipBtn.disabled = disabled || skippedCount >= maxSkips;
+    }
+
+    function formatTimeLeft(ms) {
+      const totalSeconds = Math.ceil(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function refreshTimer() {
+      const remainingMs = timeoutEnd - Date.now();
+      if (remainingMs <= 0) {
+        clearInterval(timeoutInterval);
+        timeoutInterval = null;
+        timeoutEnd = null;
+        statusText.textContent = 'Time out is over. You can play again.';
+        setGameDisabled(false);
+        saveState();
+        return;
+      }
+
+      statusText.textContent = `Caught! Time out: ${formatTimeLeft(remainingMs)} remaining.`;
+    }
+
+    function startTimeout() {
+      // Timer increases with each caught: 1 min, 2 min, 3 min, etc.
+      const durationMinutes = caughtCount;
+      const durationMs = durationMinutes * 60 * 1000;
+
+      timeoutEnd = Date.now() + durationMs;
+      setGameDisabled(true);
+      clearInterval(timeoutInterval);
+
+      function refreshTimer() {
+        const remainingMs = timeoutEnd - Date.now();
+        if (remainingMs <= 0) {
+          clearInterval(timeoutInterval);
+          timeoutInterval = null;
+          timeoutEnd = null;
+          statusText.textContent = 'Time out is over. You can play again.';
+          setGameDisabled(false);
+          saveState();
+          return;
+        }
+        statusText.textContent = `Caught (${durationMinutes} min penalty)! Time out: ${formatTimeLeft(remainingMs)} remaining.`;
+      }
+
+      refreshTimer();
+      timeoutInterval = setInterval(refreshTimer, 250);
+      saveState();
+    }
+
+    function restoreTimeoutIfNeeded() {
+      clearInterval(timeoutInterval);
+      timeoutInterval = null;
+
+      if (isTimedOut()) {
+        setGameDisabled(true);
+        refreshTimer();
+        timeoutInterval = setInterval(refreshTimer, 250);
+      } else {
+        timeoutEnd = null;
+      }
+    }
+
+    function renderGameState() {
+      renderCompletedList();
+      updateStats();
+
+      if (currentRiddle) {
+        challengeNumber.textContent = `Challenge ${seenCount}`;
+        riddleText.textContent = currentRiddle;
+      } else if (availableRiddles.length === 0 && seenCount > 0) {
+        challengeNumber.textContent = 'Finished';
+        riddleText.textContent = 'All challenges have been used.';
+        statusText.textContent = 'Press reset to start over.';
+      } else {
+        challengeNumber.textContent = 'Challenge Ready';
+        riddleText.textContent = 'Press start to begin.';
+      }
+
+      if (!currentRiddle && availableRiddles.length > 0 && !isTimedOut() && seenCount > 0) {
+        statusText.textContent = 'Press Start / Complete to get the next challenge.';
+      }
+
+      if (!currentRiddle && availableRiddles.length > 0 && seenCount === 0 && !isTimedOut()) {
+        statusText.textContent = 'Take a photo to prove it.';
+      }
+
+      if (availableRiddles.length === 0) {
+        setGameDisabled(true);
+      } else {
+        setGameDisabled(false);
+      }
+
+      restoreTimeoutIfNeeded();
+      updateStats();
+    }
+
+    function pickRandomRiddle() {
+      if (availableRiddles.length === 0) {
+        currentRiddle = null;
+        riddleText.textContent = 'All challenges have been used.';
+        challengeNumber.textContent = 'Finished';
+        statusText.textContent = 'Press reset to start over.';
+        setGameDisabled(true);
+        updateStats();
+        saveState();
+        return;
+      }
+
+      const index = Math.floor(Math.random() * availableRiddles.length);
+      currentRiddle = availableRiddles.splice(index, 1)[0];
+      seenCount++;
+      challengeNumber.textContent = `Challenge ${seenCount}`;
+      riddleText.textContent = currentRiddle;
+      if (!isTimedOut()) {
+        statusText.textContent = 'Take a photo to prove it.';
+      }
+      updateStats();
+      saveState();
+    }
+
+    startOrCompleteBtn.onclick = () => {
+      if (isTimedOut()) return;
+
+      if (!currentRiddle) {
+        pickRandomRiddle();
+        return;
+      }
+
+      completedCount++;
+      completedItems.push(currentRiddle);
+      renderCompletedList();
+      currentRiddle = null;
+      saveState();
+      pickRandomRiddle();
+    };
+
+    skipBtn.onclick = () => {
+      if (isTimedOut()) return;
+      if (skippedCount >= maxSkips) return;
+
+      skippedCount++;
+      currentRiddle = null;
+      saveState();
+      pickRandomRiddle();
+
+      if (skippedCount >= maxSkips) {
+        skipBtn.disabled = true;
+      }
+
+      updateStats();
+      saveState();
+    };
+
+    document.getElementById('caughtBtn').onclick = () => {
+      const password = prompt('Enter admin password to mark as caught:');
+      if (password !== 'Jesus') {
+        alert('Incorrect password.');
+        return;
+      }
+
+      caughtCount++;
+      saveState();
+      startTimeout();
+      updateStats();
+    };
+
+    document.getElementById('resetBtn').onclick = () => {
+      const password = prompt('Enter admin password to reset:');
+      if (password !== 'Jesus') {
+        alert('Incorrect password. Reset denied.');
+        return;
+      }
+
+      localStorage.removeItem(STORAGE_KEY);
+      clearSavedAccess();
+      availableRiddles = [...riddles];
+      currentRiddle = null;
+      completedCount = 0;
+      skippedCount = 0;
+      caughtCount = 0;
+      seenCount = 0;
+      completedItems = [];
+      clearInterval(timeoutInterval);
+      timeoutInterval = null;
+      timeoutEnd = null;
+      completedList.innerHTML = '';
+      riddleText.textContent = 'Press start to begin.';
+      challengeNumber.textContent = 'Challenge Ready';
+      statusText.textContent = 'Take a photo to prove it.';
+      setGameDisabled(false);
+      updateStats();
+      saveState();
+    };
+
+    startGameBtn.onclick = () => {
+      const password = prompt('Enter password to start the game:');
+      if (password !== 'Jesus') {
+        alert('Incorrect password.');
+        return;
+      }
+      saveAccessGranted();
+      startScreen.style.display = 'none';
+    };
+
+    loadState();
+    renderGameState();
+
+    if (hasSavedAccess()) {
+      startScreen.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
