@@ -20,7 +20,7 @@
 
     .app {
       width: 100%;
-      max-width: 900px;
+      max-width: 980px;
       background: white;
       border-radius: 20px;
       box-shadow: 0 18px 50px rgba(0,0,0,0.12);
@@ -54,7 +54,7 @@
 
     .stats {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 12px;
     }
 
@@ -132,10 +132,137 @@
     .complete-btn { background: #10b981; color: white; }
     .skip-btn { background: #f59e0b; color: white; }
     .reset-btn { background: #ef4444; color: white; }
+    .photo-btn { background: #2563eb; color: white; }
 
     button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    .history-section {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 18px;
+      align-items: start;
+    }
+
+    .panel {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .panel h3 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    #completedList {
+      margin: 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .submission-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .submission-card {
+      background: white;
+      border: 1px solid #dbe3ef;
+      border-radius: 14px;
+      padding: 8px;
+    }
+
+    .submission-card img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: 10px;
+      display: block;
+      cursor: pointer;
+    }
+
+    .submission-caption {
+      font-size: 0.78rem;
+      line-height: 1.3;
+      color: #475569;
+      margin-top: 8px;
+      max-height: 3.2em;
+      overflow: hidden;
+    }
+
+    .hidden-input {
+      display: none;
+    }
+
+    .photo-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.82);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 2000;
+    }
+
+    .photo-overlay.active {
+      display: flex;
+    }
+
+    .photo-overlay-content {
+      background: white;
+      border-radius: 18px;
+      padding: 16px;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .photo-overlay-content img {
+      max-width: 100%;
+      max-height: 72vh;
+      border-radius: 12px;
+      object-fit: contain;
+    }
+
+    .overlay-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      font-weight: bold;
+    }
+
+    @media (max-width: 860px) {
+      .stats {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .history-section {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .stats {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .riddle-text {
+        font-size: 1.22rem;
+      }
+
+      .content {
+        padding: 16px;
+      }
     }
   </style>
 </head>
@@ -169,69 +296,81 @@
       <div class="buttons">
         <button class="complete-btn" id="startOrCompleteBtn">Start / Complete</button>
         <button class="skip-btn" id="skipBtn">Skip</button>
+        <button class="photo-btn" id="addPhotoBtn">Take / Choose Photo</button>
         <button class="reset-btn" id="caughtBtn">Caught</button>
         <button class="reset-btn" id="resetBtn">Reset</button>
       </div>
 
-      <ol id="completedList"></ol>
+      <input class="hidden-input" type="file" id="photoInput" accept="image/*" capture="environment" />
+
+      <div class="history-section">
+        <div class="panel">
+          <h3>Completed Challenges</h3>
+          <ol id="completedList"></ol>
+        </div>
+        <div class="panel">
+          <h3>Photo Submissions</h3>
+          <div id="submissionGrid" class="submission-grid"></div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    const STORAGE_KEY = 'ikeaScavengerHuntState_v1';
+    const STORAGE_KEY = 'ikeaScavengerHuntState_v2';
     const ACCESS_KEY = 'ikeaScavengerHuntAccess_v1';
 
     const riddles = [
-      "Take a photo of a place where it would be good to have dinner.",
-      "Take a photo with someone who looks like they watch anime.",
-      "Find the coziest couch in the store and take a photo with it.",
-      "Take a photo pretending you live in one of the display rooms.",
-      "Find a lamp that looks like it belongs in a movie and take a photo.",
-      "Take a photo with the fanciest chair you can find.",
-      "Find a kitchen display that looks like someone actually cooks there and take a photo.",
-      "Take a photo of the bed you would most want to nap in.",
-      "Find an item you would never buy and take a dramatic photo with it.",
-      "Take a photo with something that matches your outfit.",
-      "Find the smallest item you can spot and take a photo with it.",
-      "Take a photo of a room setup that looks like a rich college student lives there.",
-      "Find a mirror and take the best group selfie you can.",
-      "Take a photo pretending to host a cooking show in a display kitchen.",
-      "Find the weirdest pillow and take a photo with it.",
-      "Take a photo with something blue and yellow like the IKEA colors.",
-      "Find a fake plant that almost looks real and take a photo.",
-      "Take a photo with an item that reminds you of your grandma's house.",
-      "Find a desk setup that looks perfect for gaming and take a photo.",
-      "Take a photo acting like you just bought your first apartment.",
-      "Find a stuffed animal or plush item and take a photo with it.",
-      "Take a photo of the most relaxing reading corner you can find.",
-      "Find a plate or bowl you would use for ramen and take a photo.",
-      "Take a photo with the brightest lamp you can find.",
-      "Find a display room that looks like a teacher lives there and take a photo.",
-      "Take a photo with something that looks futuristic.",
-      "Find a room that would be perfect for an after-school nap and take a photo.",
-      "Take a photo with an item that looks overpriced even if it isn't.",
-      "Find the best dinner table for a first date and take a photo.",
-      "Take a photo pretending to pitch an HGTV show in a display room.",
-      "Find something you think a volleyball player would want in their room and take a photo.",
-      "Take a photo with the most uncomfortable-looking chair you can find.",
-      "Find a display room you think your parents would love and take a photo.",
-      "Take a photo with something that looks like it belongs in a dorm room.",
-      "Find the most modern-looking kitchen and take a photo in it.",
-      "Take a photo with a rug you would want in your future house.",
-      "Find something that looks like it belongs in a beach house and take a photo.",
-      "Take a photo of the best place to sit and gossip.",
-      "Find a lamp or decoration that looks magical and take a photo.",
-      "Take a photo pretending you are a furniture model in a catalog.",
-      "Find a room setup that feels the most peaceful and take a photo.",
-      "Take a photo with the best item for movie night.",
-      "Find a shelf or organizer that would fix your life and take a photo.",
-      "Take a photo of a space where you could imagine doing homework.",
-      "Find the best chair for reading the Bible and take a photo.",
-      "Take a photo with a kitchen item you don't know how to use.",
-      "Find a room setup that looks like a newly married couple would live there and take a photo.",
-      "Take a photo with something that feels very Scandinavian.",
-      "Find a room setup that would be perfect for hosting friends and take a photo.",
-      "Take a photo acting like you are shopping for your dream home."
+      "Take a photo of your group pretending to have a very serious business meeting on a couch.",
+      "Take a photo of everyone acting like mannequins in a display room.",
+      "Take a photo of your group fake-sleeping dramatically in a bed display.",
+      "Take a photo of one person being ‘the chef’ and others reacting like a cooking show audience.",
+      "Take a photo of your group arguing over a couch like it’s the last one on Earth.",
+      "Take a photo of someone proposing to a piece of furniture.",
+      "Take a photo of your group acting like a happy family in a living room.",
+      "Take a photo of everyone hiding behind furniture like spies.",
+      "Take a photo of your group doing a fashion runway walk in a display area.",
+      "Take a photo of your group pretending the floor is lava.",
+      "Take a photo of someone lifting a tiny item like it’s extremely heavy.",
+      "Take a photo of your group reacting like they just saw a ghost in a bedroom.",
+      "Take a photo of your group doing a synchronized pose on chairs.",
+      "Take a photo of someone being tucked into bed by the group.",
+      "Take a photo of your group pretending to watch TV very intensely.",
+      "Take a photo of your group acting like they’re in a horror movie scene.",
+      "Take a photo of everyone pointing at one person like they’re the main character.",
+      "Take a photo of your group pretending to have a pillow fight.",
+      "Take a photo of your group acting like they’re late for something important.",
+      "Take a photo of your group posing like a band album cover.",
+      "Take a photo of someone sitting like royalty on a chair with others bowing.",
+      "Take a photo of your group acting like they just got bad news.",
+      "Take a photo of your group pretending to be influencers reviewing furniture.",
+      "Take a photo of your group doing their best superhero poses.",
+      "Take a photo of your group acting like they’re lost in IKEA.",
+      "Take a photo of someone dramatically fainting into furniture.",
+      "Take a photo of your group acting like a family dinner gone wrong.",
+      "Take a photo of your group pretending to be detectives investigating a room.",
+      "Take a photo of your group copying the exact pose of mannequins.",
+      "Take a photo of your group acting like they’re in a commercial.",
+      "Take a photo of your group pretending to fight over the remote.",
+      "Take a photo of your group acting like they’re freezing cold in a bedroom.",
+      "Take a photo of your group pretending to sneak food.",
+      "Take a photo of your group acting like they’re exhausted after a long day.",
+      "Take a photo of your group posing like a movie poster.",
+      "Take a photo of your group pretending to move furniture dramatically.",
+      "Take a photo of your group acting like they’re in a romantic scene.",
+      "Take a photo of your group reacting like they found something shocking.",
+      "Take a photo of your group pretending to be on a game show.",
+      "Take a photo of your group acting like they’re gossiping.",
+      "Take a photo of your group pretending to be robots.",
+      "Take a photo of your group acting like they’re late for class.",
+      "Take a photo of your group doing a freeze-frame mid-action.",
+      "Take a photo of your group pretending to be statues.",
+      "Take a photo of your group acting like they’re celebrating something big.",
+      "Take a photo of your group pretending to be in a dramatic breakup scene.",
+      "Take a photo of your group acting like they’re on vacation in IKEA.",
+      "Take a photo of your group pretending to be furniture salespeople.",
+      "Take a photo of your group doing their funniest face all at once.",
+      "Take a photo of your group acting like they’re the main characters in a sitcom."
     ];
 
     let availableRiddles = [...riddles];
@@ -244,15 +383,37 @@
     let timeoutEnd = null;
     let timeoutInterval = null;
     let completedItems = [];
+    let photoSubmissions = [];
+    let pendingPhotoData = null;
 
     const skipBtn = document.getElementById('skipBtn');
     const startOrCompleteBtn = document.getElementById('startOrCompleteBtn');
+    const addPhotoBtn = document.getElementById('addPhotoBtn');
+    const photoInput = document.getElementById('photoInput');
     const statusText = document.getElementById('statusText');
     const challengeNumber = document.getElementById('challengeNumber');
     const riddleText = document.getElementById('riddleText');
     const completedList = document.getElementById('completedList');
+    const submissionGrid = document.getElementById('submissionGrid');
     const startScreen = document.getElementById('startScreen');
     const startGameBtn = document.getElementById('startGameBtn');
+
+    const photoOverlay = document.createElement('div');
+    photoOverlay.className = 'photo-overlay';
+    photoOverlay.innerHTML = `
+      <div class="photo-overlay-content">
+        <div class="overlay-top">
+          <span id="overlayCaption">Photo Preview</span>
+          <button id="closeOverlayBtn" class="reset-btn">Close</button>
+        </div>
+        <img id="overlayImage" alt="Submission preview" />
+      </div>
+    `;
+    document.body.appendChild(photoOverlay);
+
+    const overlayImage = document.getElementById('overlayImage');
+    const overlayCaption = document.getElementById('overlayCaption');
+    const closeOverlayBtn = document.getElementById('closeOverlayBtn');
 
     function saveAccessGranted() {
       localStorage.setItem(ACCESS_KEY, 'true');
@@ -276,7 +437,9 @@
         maxSkips,
         seenCount,
         timeoutEnd,
-        completedItems
+        completedItems,
+        photoSubmissions,
+        pendingPhotoData
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
@@ -296,6 +459,8 @@
         seenCount = Number.isInteger(state.seenCount) ? state.seenCount : 0;
         timeoutEnd = typeof state.timeoutEnd === 'number' ? state.timeoutEnd : null;
         completedItems = Array.isArray(state.completedItems) ? state.completedItems : [];
+        photoSubmissions = Array.isArray(state.photoSubmissions) ? state.photoSubmissions : [];
+        pendingPhotoData = typeof state.pendingPhotoData === 'string' ? state.pendingPhotoData : null;
         return true;
       } catch (error) {
         console.error('Could not load saved game state.', error);
@@ -312,6 +477,48 @@
       });
     }
 
+    function renderSubmissions() {
+      submissionGrid.innerHTML = '';
+
+      if (!photoSubmissions.length) {
+        submissionGrid.innerHTML = '<div style="color:#64748b;font-size:0.92rem;">No photos yet.</div>';
+        return;
+      }
+
+      photoSubmissions.slice().reverse().forEach((submission, index) => {
+        const card = document.createElement('div');
+        card.className = 'submission-card';
+
+        const img = document.createElement('img');
+        img.src = submission.image;
+        img.alt = submission.prompt || 'Submission photo';
+        img.onclick = () => openOverlay(submission.image, submission.prompt || `Submission ${photoSubmissions.length - index}`);
+
+        const caption = document.createElement('div');
+        caption.className = 'submission-caption';
+        caption.textContent = submission.prompt || 'Untitled submission';
+
+        card.appendChild(img);
+        card.appendChild(caption);
+        submissionGrid.appendChild(card);
+      });
+    }
+
+    function openOverlay(src, caption) {
+      overlayImage.src = src;
+      overlayCaption.textContent = caption;
+      photoOverlay.classList.add('active');
+    }
+
+    function closeOverlay() {
+      photoOverlay.classList.remove('active');
+    }
+
+    closeOverlayBtn.onclick = closeOverlay;
+    photoOverlay.onclick = (event) => {
+      if (event.target === photoOverlay) closeOverlay();
+    };
+
     function updateStats() {
       document.getElementById('completedCount').textContent = completedCount;
       document.getElementById('skippedCount').textContent = skippedCount;
@@ -327,6 +534,7 @@
 
     function setGameDisabled(disabled) {
       startOrCompleteBtn.disabled = disabled;
+      addPhotoBtn.disabled = disabled;
       skipBtn.disabled = disabled || skippedCount >= maxSkips;
     }
 
@@ -353,7 +561,6 @@
     }
 
     function startTimeout() {
-      // Timer increases with each caught: 1 min, 2 min, 3 min, etc.
       const durationMinutes = caughtCount;
       const durationMs = durationMinutes * 60 * 1000;
 
@@ -361,7 +568,7 @@
       setGameDisabled(true);
       clearInterval(timeoutInterval);
 
-      function refreshTimer() {
+      function refreshCaughtTimer() {
         const remainingMs = timeoutEnd - Date.now();
         if (remainingMs <= 0) {
           clearInterval(timeoutInterval);
@@ -375,8 +582,8 @@
         statusText.textContent = `Caught (${durationMinutes} min penalty)! Time out: ${formatTimeLeft(remainingMs)} remaining.`;
       }
 
-      refreshTimer();
-      timeoutInterval = setInterval(refreshTimer, 250);
+      refreshCaughtTimer();
+      timeoutInterval = setInterval(refreshCaughtTimer, 250);
       saveState();
     }
 
@@ -386,8 +593,22 @@
 
       if (isTimedOut()) {
         setGameDisabled(true);
-        refreshTimer();
-        timeoutInterval = setInterval(refreshTimer, 250);
+        const activePenaltyMinutes = Math.max(1, caughtCount);
+        function refreshCaughtTimer() {
+          const remainingMs = timeoutEnd - Date.now();
+          if (remainingMs <= 0) {
+            clearInterval(timeoutInterval);
+            timeoutInterval = null;
+            timeoutEnd = null;
+            statusText.textContent = 'Time out is over. You can play again.';
+            setGameDisabled(false);
+            saveState();
+            return;
+          }
+          statusText.textContent = `Caught (${activePenaltyMinutes} min penalty)! Time out: ${formatTimeLeft(remainingMs)} remaining.`;
+        }
+        refreshCaughtTimer();
+        timeoutInterval = setInterval(refreshCaughtTimer, 250);
       } else {
         timeoutEnd = null;
       }
@@ -395,6 +616,7 @@
 
     function renderGameState() {
       renderCompletedList();
+      renderSubmissions();
       updateStats();
 
       if (currentRiddle) {
@@ -414,7 +636,15 @@
       }
 
       if (!currentRiddle && availableRiddles.length > 0 && seenCount === 0 && !isTimedOut()) {
-        statusText.textContent = 'Take a photo to prove it.';
+        statusText.textContent = 'Press Start / Complete to get your first challenge.';
+      }
+
+      if (currentRiddle && !pendingPhotoData && !isTimedOut()) {
+        statusText.textContent = 'Take or choose a photo before completing this challenge.';
+      }
+
+      if (currentRiddle && pendingPhotoData && !isTimedOut()) {
+        statusText.textContent = 'Photo ready. Press Start / Complete to submit this challenge.';
       }
 
       if (availableRiddles.length === 0) {
@@ -441,15 +671,44 @@
 
       const index = Math.floor(Math.random() * availableRiddles.length);
       currentRiddle = availableRiddles.splice(index, 1)[0];
+      pendingPhotoData = null;
       seenCount++;
       challengeNumber.textContent = `Challenge ${seenCount}`;
       riddleText.textContent = currentRiddle;
       if (!isTimedOut()) {
-        statusText.textContent = 'Take a photo to prove it.';
+        statusText.textContent = 'Take or choose a photo before completing this challenge.';
       }
       updateStats();
       saveState();
     }
+
+    function requireCurrentChallenge() {
+      if (!currentRiddle) {
+        alert('Start a challenge first.');
+        return false;
+      }
+      return true;
+    }
+
+    addPhotoBtn.onclick = () => {
+      if (isTimedOut()) return;
+      if (!requireCurrentChallenge()) return;
+      photoInput.value = '';
+      photoInput.click();
+    };
+
+    photoInput.onchange = (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file || !currentRiddle) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        pendingPhotoData = reader.result;
+        statusText.textContent = 'Photo ready. Press Start / Complete to submit this challenge.';
+        saveState();
+      };
+      reader.readAsDataURL(file);
+    };
 
     startOrCompleteBtn.onclick = () => {
       if (isTimedOut()) return;
@@ -459,10 +718,22 @@
         return;
       }
 
+      if (!pendingPhotoData) {
+        alert('You need to take or choose a photo before completing this challenge.');
+        return;
+      }
+
       completedCount++;
       completedItems.push(currentRiddle);
+      photoSubmissions.push({
+        prompt: currentRiddle,
+        image: pendingPhotoData,
+        createdAt: Date.now()
+      });
       renderCompletedList();
+      renderSubmissions();
       currentRiddle = null;
+      pendingPhotoData = null;
       saveState();
       pickRandomRiddle();
     };
@@ -473,6 +744,7 @@
 
       skippedCount++;
       currentRiddle = null;
+      pendingPhotoData = null;
       saveState();
       pickRandomRiddle();
 
@@ -513,13 +785,16 @@
       caughtCount = 0;
       seenCount = 0;
       completedItems = [];
+      photoSubmissions = [];
+      pendingPhotoData = null;
       clearInterval(timeoutInterval);
       timeoutInterval = null;
       timeoutEnd = null;
       completedList.innerHTML = '';
+      submissionGrid.innerHTML = '';
       riddleText.textContent = 'Press start to begin.';
       challengeNumber.textContent = 'Challenge Ready';
-      statusText.textContent = 'Take a photo to prove it.';
+      statusText.textContent = 'Press Start / Complete to get your first challenge.';
       setGameDisabled(false);
       updateStats();
       saveState();
